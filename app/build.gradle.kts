@@ -18,6 +18,10 @@ android {
         versionCode = 1
         versionName = "0.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Schemas are checked in: a migration is only reviewable against the
+        // shape it is migrating from.
+        ksp { arg("room.schemaLocation", "$projectDir/schemas") }
     }
 
     buildTypes {
@@ -49,6 +53,13 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+}
+
+// The live extractor test is opt-in; this is what lets -Dsymus.live=1 through
+// to the test JVM, which does not inherit Gradle's system properties.
+tasks.withType<Test>().configureEach {
+    systemProperty("symus.live", providers.systemProperty("symus.live").getOrElse("0"))
+    testLogging { events("passed", "skipped", "failed") }
 }
 
 dependencies {

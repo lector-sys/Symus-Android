@@ -1,0 +1,497 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "54d0a0b88bcb9ebd67545151a7e348af",
+    "entities": [
+      {
+        "tableName": "tracks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`videoId` TEXT NOT NULL, `title` TEXT NOT NULL, `artist` TEXT, `album` TEXT, `thumbnailUrl` TEXT, `duration` INTEGER NOT NULL, `genre` TEXT, `contentType` TEXT, `addedAt` INTEGER NOT NULL, `cachedPath` TEXT, `cachedBytes` INTEGER, PRIMARY KEY(`videoId`))",
+        "fields": [
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "artist",
+            "columnName": "artist",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "album",
+            "columnName": "album",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "thumbnailUrl",
+            "columnName": "thumbnailUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "contentType",
+            "columnName": "contentType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "addedAt",
+            "columnName": "addedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedPath",
+            "columnName": "cachedPath",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "cachedBytes",
+            "columnName": "cachedBytes",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "videoId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_tracks_artist",
+            "unique": false,
+            "columnNames": [
+              "artist"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_artist` ON `${TABLE_NAME}` (`artist`)"
+          },
+          {
+            "name": "index_tracks_album",
+            "unique": false,
+            "columnNames": [
+              "album"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_album` ON `${TABLE_NAME}` (`album`)"
+          },
+          {
+            "name": "index_tracks_genre",
+            "unique": false,
+            "columnNames": [
+              "genre"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_tracks_genre` ON `${TABLE_NAME}` (`genre`)"
+          }
+        ]
+      },
+      {
+        "tableName": "playlists",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `title` TEXT NOT NULL, `coverUrl` TEXT, `genre` TEXT, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "coverUrl",
+            "columnName": "coverUrl",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "playlist_tracks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`playlistId` INTEGER NOT NULL, `videoId` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`playlistId`, `videoId`), FOREIGN KEY(`playlistId`) REFERENCES `playlists`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE , FOREIGN KEY(`videoId`) REFERENCES `tracks`(`videoId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "playlistId",
+            "columnName": "playlistId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "playlistId",
+            "videoId"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_playlist_tracks_videoId",
+            "unique": false,
+            "columnNames": [
+              "videoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_videoId` ON `${TABLE_NAME}` (`videoId`)"
+          },
+          {
+            "name": "index_playlist_tracks_playlistId_position",
+            "unique": false,
+            "columnNames": [
+              "playlistId",
+              "position"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_playlist_tracks_playlistId_position` ON `${TABLE_NAME}` (`playlistId`, `position`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "playlists",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "playlistId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          },
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "videoId"
+            ],
+            "referencedColumns": [
+              "videoId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "likes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`videoId` TEXT NOT NULL, `likedAt` INTEGER NOT NULL, PRIMARY KEY(`videoId`), FOREIGN KEY(`videoId`) REFERENCES `tracks`(`videoId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "likedAt",
+            "columnName": "likedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "videoId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "videoId"
+            ],
+            "referencedColumns": [
+              "videoId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "dislikes",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`videoId` TEXT NOT NULL, `dislikedAt` INTEGER NOT NULL, PRIMARY KEY(`videoId`), FOREIGN KEY(`videoId`) REFERENCES `tracks`(`videoId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dislikedAt",
+            "columnName": "dislikedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "videoId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "videoId"
+            ],
+            "referencedColumns": [
+              "videoId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `videoId` TEXT NOT NULL, `playedAt` INTEGER NOT NULL, `skipped` INTEGER NOT NULL, FOREIGN KEY(`videoId`) REFERENCES `tracks`(`videoId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playedAt",
+            "columnName": "playedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "skipped",
+            "columnName": "skipped",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_history_videoId",
+            "unique": false,
+            "columnNames": [
+              "videoId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_history_videoId` ON `${TABLE_NAME}` (`videoId`)"
+          },
+          {
+            "name": "index_history_playedAt",
+            "unique": false,
+            "columnNames": [
+              "playedAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_history_playedAt` ON `${TABLE_NAME}` (`playedAt`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "videoId"
+            ],
+            "referencedColumns": [
+              "videoId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "lyrics",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`videoId` TEXT NOT NULL, `synced` TEXT, `plain` TEXT, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`videoId`), FOREIGN KEY(`videoId`) REFERENCES `tracks`(`videoId`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "videoId",
+            "columnName": "videoId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "synced",
+            "columnName": "synced",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "plain",
+            "columnName": "plain",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "videoId"
+          ]
+        },
+        "foreignKeys": [
+          {
+            "table": "tracks",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "videoId"
+            ],
+            "referencedColumns": [
+              "videoId"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "search_queries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`query` TEXT NOT NULL, `at` INTEGER NOT NULL, PRIMARY KEY(`query`))",
+        "fields": [
+          {
+            "fieldPath": "query",
+            "columnName": "query",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "at",
+            "columnName": "at",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "query"
+          ]
+        }
+      },
+      {
+        "tableName": "settings",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`key`))",
+        "fields": [
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "key"
+          ]
+        }
+      },
+      {
+        "tableName": "followed_channels",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`channelId` TEXT NOT NULL, `name` TEXT NOT NULL, `followedAt` INTEGER NOT NULL, PRIMARY KEY(`channelId`))",
+        "fields": [
+          {
+            "fieldPath": "channelId",
+            "columnName": "channelId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "followedAt",
+            "columnName": "followedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "channelId"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '54d0a0b88bcb9ebd67545151a7e348af')"
+    ]
+  }
+}
