@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The desktop app's ink. Deliberately a warm near-black, not zinc. -->
+    <color name="ink">#0A0908</color>
+</resources>
