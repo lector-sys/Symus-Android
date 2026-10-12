@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    updatePeriodMillis is 0 on purpose. The widget is pushed to whenever
+    playback changes and never polls; the system's own period has a 30-minute
+    floor anyway, which is both too slow to be useful and too often to be free.
+
+    configuration_optional: the now-playing widget is useful the second it
+    lands, so the launcher adds it and the configuration screen is offered
+    rather than imposed. reconfigurable keeps it reachable afterwards, from the
+    launcher on Android 12+ and from Appearance in the app on every version.
+
+    targetCellWidth/Height are honoured from Android 12 and ignored below it,
+    where minWidth/minHeight do the same job in dp.
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="48dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:minResizeWidth="180dp"
+    android:minResizeHeight="48dp"
+    android:maxResizeWidth="500dp"
+    android:maxResizeHeight="300dp"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description"
+    android:configure="io.github.lectorsys.symus.widget.WidgetConfigActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:updatePeriodMillis="0" />

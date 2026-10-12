@@ -9,3 +9,15 @@
 .cxx
 local.properties
 /app/build
+
+# Build outputs belong in GitHub Releases, not history
+*.apk
+*.aab
+*.idsig
+
+# Signing keys and secrets
+*.jks
+*.keystore
+*.p12
+.env
+.env.*

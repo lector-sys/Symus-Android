@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug builds only. This file does not exist in a release build, and the
+    release APK keeps the platform default: no cleartext, anywhere.
+
+    The one exemption is the loopback interface, which the download tests use to
+    serve a handful of bytes to ModelStore from a socket on the device itself.
+    Testing the digest check against a real server rather than a stubbed one is
+    worth a narrow hole; pointing that hole at anything reachable from outside
+    the device would not be.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

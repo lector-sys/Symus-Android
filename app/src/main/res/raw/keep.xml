@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Keeps the widget layouts that resource shrinking removes.
+
+    Glance does not inflate a layout the way an XML screen does. It ships a
+    large set of generated layouts — `box_child_*`, `column_child_*`,
+    `glance_*`, one per combination of alignment and depth — and picks one at
+    runtime by computing its resource id. Nothing in the code or the manifest
+    names them, so `shrinkResources` concludes they are unused and strips the
+    lot: the release APK went from 937 layouts to zero, and both home-screen
+    widgets rendered as blank white rectangles while the debug build was fine.
+
+    Keeping every layout is the right scope rather than a blunt instrument.
+    This app is entirely Compose and declares no XML layout of its own, so
+    every entry here belongs to Glance or to an AndroidX library that resolves
+    it the same reflective way. They are small; the whole set is well under a
+    megabyte, against a release APK that is 62 MB of inference runtime.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@layout/*" />

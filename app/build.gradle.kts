@@ -22,6 +22,42 @@ android {
         // Schemas are checked in: a migration is only reviewable against the
         // shape it is migrating from.
         ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
+    }
+
+    /**
+     * Two builds, because the inference runtime decides what can be installed.
+     *
+     * MediaPipe's GenAI task ships prebuilt `.so` files for `arm64-v8a` and
+     * `x86_64` only. An APK that contains native libraries and none matching the
+     * installing device's ABI is refused by the package manager outright
+     * (`INSTALL_FAILED_NO_MATCHING_ABIS`) — it does not install and then run
+     * without the feature. So a single APK carrying MediaPipe cannot be
+     * installed on a 32-bit phone at all, whatever the app would have done about
+     * it at runtime.
+     *
+     * `full` is that APK, for 64-bit devices. `lite` omits the dependency
+     * entirely — no MediaPipe classes, no 64-bit-only libraries, no ABI filter —
+     * so it installs anywhere the minSdk allows and every other feature behaves
+     * identically. `LlmEngine` is the one file that differs between them.
+     */
+    flavorDimensions += "runtime"
+    productFlavors {
+        create("full") {
+            dimension = "runtime"
+            // Filtered to what MediaPipe actually ships. Without this the build
+            // would package armeabi-v7a and x86 copies of Compose's small
+            // libraries and claim an ABI support the inference runtime cannot
+            // honour.
+            ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
+        }
+        create("lite") {
+            dimension = "runtime"
+            // Deliberately no abiFilters: every ABI the remaining native
+            // dependencies publish is packaged, which is what makes this the
+            // installable build on 32-bit hardware.
+            versionNameSuffix = "-lite"
+        }
     }
 
     buildTypes {
@@ -36,6 +72,17 @@ android {
         }
     }
 
+    // Note on testing the minified build: `testBuildType = "release"` does not
+    // work here and is deliberately not configured. R8 renames the app's own
+    // classes — `LlmRuntime` and `ChatAgent` do not appear in the release dex
+    // at all — so an instrumentation APK compiled against those names cannot
+    // resolve them, the test class fails to load, and the run reports zero
+    // tests and a green build. Keeping the app's names to work around that
+    // would mean measuring something other than what ships.
+    //
+    // The minified build is therefore exercised through its own UI, against the
+    // real media session, rather than through instrumentation.
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -46,6 +93,12 @@ android {
 
     buildFeatures {
         compose = true
+    }
+
+    // The migration test validates the result against the exported schemas, so
+    // they have to be on the device with it.
+    sourceSets.getByName("androidTest") {
+        assets.srcDirs(files("$projectDir/schemas"))
     }
 
     packaging {
@@ -98,7 +151,21 @@ dependencies {
 
     implementation(libs.newpipe.extractor)
 
+    // `full` only. This single line is what the whole flavour split is about:
+    // the `lite` APK never sees these classes or their native libraries.
+    "fullImplementation"(libs.mediapipe.genai)
+
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.room.testing)
+
+    // The database tests run on a device: Room's in-memory builder and its
+    // migration helper both need a real SQLite and a real Context, and a
+    // stand-in for either would be testing the stand-in.
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
 }

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -10,30 +11,173 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
 
+    <!-- Downloads keep running with the app in the background, which needs its
+         own foreground service type from Android 14 on. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <!-- 13 and up: without this the media notification simply never appears,
          and playback looks broken rather than un-permitted. Requested at the
-         point the user first plays something, not on launch. -->
+         point the user first plays something, not on launch — and playback is
+         never blocked on the answer. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Resuming after a headset reconnects. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Voice search. Requested at the moment the microphone button is pressed
+         and never on launch; everything else in the app works without it. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
+        Android 11 and up hide other packages unless they are declared. Without
+        this, SpeechRecognizer.isRecognitionAvailable() reports false on every
+        device and voice search silently never appears — which looks exactly
+        like the feature not existing.
+    -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
+
+    <!--
+        DataExtractionRules: lint asks for a fullBackupContent companion for API
+        26-31. There is deliberately none. allowBackup="false" already disables
+        backup outright on every version this app runs on, so the older
+        attribute would have nothing to describe; the rules file exists only to
+        say the same thing in the form Android 12+ reads.
+
+        enableOnBackInvokedCallback is predictive back: honoured from Android 13,
+        ignored below it. tools:targetApi records that floor rather than hiding
+        the warning.
+    -->
     <application
         android:name=".SymusApp"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:ignore="DataExtractionRules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="tiramisu"
         android:theme="@style/Theme.SYmuS">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|smallestScreenSize"
+            android:windowSoftInputMode="adjustResize"
             android:theme="@style/Theme.SYmuS">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                The Spotify OAuth redirect. A custom scheme rather than an app
+                link because the redirect URI has to be registered by whoever
+                owns the Spotify app registration, and this app ships no domain
+                for them to verify against.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="symus" android:host="spotify-callback" />
+            </intent-filter>
+        </activity>
+
+        <!--
+            The session service. Exported so the system's media controls, a
+            watch, or a car head unit can bind to it — that is how a media
+            session reaches anything outside the app, and an un-exported one
+            would leave the lock-screen controls talking to nobody.
+        -->
+        <service
+            android:name=".media.PlaybackService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".media.DownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!--
+            Media3 wires up the notification's own buttons itself. This one is
+            declared because something outside the app presses them: the widget
+            sends media button intents here rather than starting the service
+            directly, and the same receiver is what a headset button reaches.
+            Exported for that reason — it takes no data, only a key code.
+        -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.SymusWidgetReceiver"
+            android:exported="false"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/symus_widget_info" />
+        </receiver>
+
+        <!--
+            Skip controls from a widget. Not exported: the only sender is this
+            app's own widgets, addressed by component.
+        -->
+        <receiver
+            android:name=".widget.WidgetControlReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="io.github.lectorsys.symus.widget.NEXT" />
+                <action android:name="io.github.lectorsys.symus.widget.PREVIOUS" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.PlaylistWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_playlist_description">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/symus_playlist_widget_info" />
+        </receiver>
+
+        <!--
+            Exported because the launcher starts it on the user's behalf when a
+            widget is added or reconfigured — an un-exported configure activity
+            is simply never shown, and the widget lands on defaults with no way
+            to change them. It takes one integer, the widget id, and refuses
+            anything else.
+        -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:label="@string/widget_config_title"
+            android:theme="@style/Theme.SYmuS">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
 

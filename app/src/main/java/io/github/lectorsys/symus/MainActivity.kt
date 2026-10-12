@@ -1,103 +1,88 @@
 package io.github.lectorsys.symus
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.activity.viewModels
+import androidx.media3.common.util.UnstableApi
 import dagger.hilt.android.AndroidEntryPoint
-import io.github.lectorsys.symus.ui.SearchViewModel
-
-@AndroidEntryPoint
-class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
-        setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
-                ProofOfConcept()
-            }
-        }
-    }
-}
+import io.github.lectorsys.symus.ui.SymusRoot
+import io.github.lectorsys.symus.library.SpotifyAdapter
+import io.github.lectorsys.symus.ui.SymusViewModel
+import io.github.lectorsys.symus.widget.WidgetIntents
+import kotlinx.coroutines.launch
+import androidx.lifecycle.lifecycleScope
+import javax.inject.Inject
 
 /**
- * Search, tap, hear it. The whole point of this screen is to prove on-device
- * extraction works end to end; the real UI arrives with the shelves.
+ * The only Activity.
+ *
+ * It owns no playback state of any kind: the service owns the player, the
+ * application owns the controller, and this owns a window. That is what makes
+ * leaving the app and coming back a non-event.
  */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProofOfConcept(viewModel: SearchViewModel = hiltViewModel()) {
-    val state by viewModel.state.collectAsStateWithLifecycle()
+@UnstableApi
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = { TopAppBar(title = { Text("SYmuS") }) }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = viewModel::onQueryChange,
-                label = { Text("Search YouTube") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
+    private val model: SymusViewModel by viewModels()
+
+    /**
+     * Injected here rather than reached through a ViewModel because the OAuth
+     * callback arrives as an Intent, which is an Activity concern and can land
+     * before any screen that would own it exists.
+     */
+    @Inject
+    lateinit var spotify: SpotifyAdapter
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Drawn behind the system bars; every screen pads for them itself.
+        enableEdgeToEdge()
+        handleWidgetIntent(intent)
+        handleOAuthCallback(intent)
+        setContent { SymusRoot(model) }
+    }
+
+    /**
+     * The launch mode is singleTask, so a second tap on a widget arrives here
+     * rather than in onCreate. Both paths go through the same handler; only
+     * routing one of them is the classic version of "the widget works once".
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetIntent(intent)
+        handleOAuthCallback(intent)
+    }
+
+    /**
+     * Finishes a Spotify sign-in.
+     *
+     * The user is sent to Spotify in a browser and comes back to
+     * `symus://spotify-callback`. An `error` instead of a `code` is the user
+     * declining, which is a normal outcome and not a failure to report.
+     */
+    private fun handleOAuthCallback(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme != "symus" || data.host != "spotify-callback") return
+        val code = data.getQueryParameter("code") ?: return
+        lifecycleScope.launch {
+            val result = spotify.completeSignIn(code)
+            model.say(
+                if (result.isSuccess) "Signed in to Spotify."
+                else result.exceptionOrNull()?.message ?: "That Spotify sign-in did not complete."
             )
-
-            Button(onClick = viewModel::search, enabled = !state.searching) {
-                Text(if (state.searching) "Searching…" else "Search")
-            }
-
-            state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-
-            state.nowPlaying?.let { track ->
-                Text("Playing: ${track.title}", style = MaterialTheme.typography.bodyMedium)
-                Button(onClick = viewModel::togglePause) { Text("Play / pause") }
-            }
-
-            if (state.searching) CircularProgressIndicator()
-
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                items(state.results, key = { it.videoId }) { track ->
-                    ListItem(
-                        headlineContent = { Text(track.title, maxLines = 2) },
-                        supportingContent = {
-                            Text(listOfNotNull(track.artist, track.genre).joinToString(" · "))
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { viewModel.play(track) }
-                    )
-                }
-            }
         }
+    }
+
+    private fun handleWidgetIntent(intent: Intent?) {
+        val destination = intent?.getStringExtra(WidgetIntents.EXTRA_DESTINATION) ?: return
+        model.openFromWidget(
+            destination = destination,
+            playlistId = intent.getLongExtra(WidgetIntents.EXTRA_PLAYLIST_ID, 0L)
+        )
     }
 }
