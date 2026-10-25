@@ -28,6 +28,10 @@
          and never on launch; everything else in the app works without it. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Settings > Update hands a downloaded APK to the system installer, which
+         still asks the user before anything is installed. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!--
         Android 11 and up hide other packages unless they are declared. Without
         this, SpeechRecognizer.isRecognitionAvailable() reports false on every
@@ -163,6 +167,16 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/symus_playlist_widget_info" />
         </receiver>
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_paths" />
+        </provider>
 
         <!--
             Exported because the launcher starts it on the user's behalf when a

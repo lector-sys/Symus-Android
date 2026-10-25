@@ -1,8 +1,18 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// The release key lives outside the repo. Every published update must be signed
+// with it, or Android refuses to install it over the copy people already have.
+val keystoreProps: Map<String, String> = Properties().let { props ->
+    val f = file(providers.gradleProperty("symusKeystore").getOrElse("../../symus-release-keys/keystore.properties"))
+    if (f.exists()) f.inputStream().use { props.load(it) }
+    props.stringPropertyNames().associateWith { props.getProperty(it) }
 }
 
 android {
@@ -60,8 +70,18 @@ android {
         }
     }
 
+    signingConfigs {
+        if (keystoreProps.isNotEmpty()) create("release") {
+            storeFile = file(keystoreProps.getValue("storeFile"))
+            storePassword = keystoreProps.getValue("storePassword")
+            keyAlias = keystoreProps.getValue("keyAlias")
+            keyPassword = keystoreProps.getValue("keyPassword")
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             // R8 on, because a sideloaded APK has no store to shrink it for us —
             // and because the extractor's ProGuard rules only get exercised in a
             // minified build. Testing that only at release time is how "works in

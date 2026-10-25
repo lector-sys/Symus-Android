@@ -18,6 +18,8 @@ import io.github.lectorsys.symus.media.Downloads
 import io.github.lectorsys.symus.widget.WidgetIntents
 import io.github.lectorsys.symus.widget.WidgetUpdater
 import io.github.lectorsys.symus.media.Playback
+import io.github.lectorsys.symus.update.UpdateState
+import io.github.lectorsys.symus.update.Updater
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -47,8 +49,16 @@ class SymusViewModel @Inject constructor(
     private val themes: ThemeRepository,
     private val backup: Backup,
     private val widgets: WidgetUpdater,
+    private val updater: Updater,
     val playback: Playback
 ) : ViewModel() {
+
+    val update = updater.state
+    val appVersion = updater.currentVersion
+    fun checkForUpdate() { viewModelScope.launch { updater.check() } }
+    fun installUpdate(available: UpdateState.Available) {
+        viewModelScope.launch { updater.install(available) }
+    }
 
     val settings = settingsRepository.settings
 
@@ -154,6 +164,13 @@ class SymusViewModel @Inject constructor(
         // The player reports its own failures; they belong in the same place as
         // everything else the user is told.
         viewModelScope.launch { playback.events.collect { _messages.emit(it) } }
+        // Once per launch, so a new release reaches people who never open Settings.
+        viewModelScope.launch {
+            val found = updater.check()
+            if (found is UpdateState.Available) {
+                _messages.emit("SYmuS ${found.version} is available — Settings › About to update.")
+            }
+        }
     }
 
     // -- backup --------------------------------------------------------------

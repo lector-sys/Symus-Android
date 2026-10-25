@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +52,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import io.github.lectorsys.symus.ui.theme.Space
+import io.github.lectorsys.symus.update.UpdateState
 
 /**
  * Settings.
@@ -224,11 +226,12 @@ fun SettingsScreen(
         item { Section("About") }
         item {
             InfoRow(
-                label = "SYmuS 0.1.0",
+                label = "SYmuS ${model.appVersion}",
                 detail = "${saved.size} saved, ${liked.size} liked. Your library, " +
                     "history and playlists are stored only on this device."
             )
         }
+        item { UpdateRow(model) }
         item {
             Text(
                 text = "Audio comes from YouTube through NewPipeExtractor, which is compiled " +
@@ -254,7 +257,9 @@ fun SettingsScreen(
                     "open the lyrics pane.\n" +
                     "• Spotify or Apple Music — only if you configure them under Import, " +
                     "and only for the playlist you asked to import.\n" +
-                    "• Hugging Face — only when you choose to download an assistant model.\n\n" +
+                    "• Hugging Face — only when you choose to download an assistant model.\n" +
+                    "• GitHub — once per launch, to see whether a newer version of " +
+                    "SYmuS has been released, and to download it when you tap Update.\n\n" +
                     "Your library, playlists, listening history and search history are " +
                     "written only to this device's storage and are never sent anywhere. " +
                     "The assistant runs entirely on this device and has no network access " +
@@ -397,6 +402,32 @@ private fun InfoRow(
             }
         }
         action?.invoke()
+    }
+}
+
+/** The update button. The check itself already ran at launch; tapping repeats it. */
+@UnstableApi
+@Composable
+private fun UpdateRow(model: SymusViewModel) {
+    val state by model.update.collectAsStateWithLifecycle()
+    InfoRow(
+        label = "Updates",
+        detail = when (val s = state) {
+            UpdateState.Idle -> "Checks GitHub for a newer release."
+            UpdateState.Checking -> "Checking…"
+            UpdateState.UpToDate -> "You have the latest version."
+            is UpdateState.Available -> "Version ${s.version} is available."
+            is UpdateState.Downloading -> "Downloading… ${(s.fraction * 100).toInt()}%"
+            is UpdateState.Failed -> s.message
+        }
+    ) {
+        when (val s = state) {
+            is UpdateState.Available -> Button(onClick = { model.installUpdate(s) }) { Text("Update") }
+            else -> OutlinedButton(
+                onClick = model::checkForUpdate,
+                enabled = s !is UpdateState.Checking && s !is UpdateState.Downloading
+            ) { Text("Check") }
+        }
     }
 }
 
